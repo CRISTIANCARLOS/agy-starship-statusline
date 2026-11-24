@@ -34,13 +34,15 @@ def main():
     except Exception:
         data = {}
 
-    # 1. Estado do Agente (compacto em minúsculas)
+    # 1. Estado do Agente (ícones Nerd Font nativos de largura única)
+    # \U000f0625 = Cérebro Nerd Font (Material Design)
+    # \uf0ad     = Chave Inglesa Nerd Font (FontAwesome)
     state = str(data.get("agent_state", "idle")).lower()
     state_presets = {
-        "idle": (0, 77, "idle", "●"),         # Verde
-        "working": (0, 214, "busy", "⚡"),     # Laranja/Amarelo
-        "thinking": (15, 99, "think", "🧠"),   # Violeta
-        "tool_use": (15, 33, "tool", "🔧"),   # Azul
+        "idle": (0, 77, "idle", "●"),              # Verde
+        "working": (0, 214, "busy", "⚡"),          # Amarelo/Laranja
+        "thinking": (15, 99, "think", "\U000f0625"),# Violeta / Cérebro Nerd Font
+        "tool_use": (15, 33, "tool", "\uf0ad"),    # Azul / Chave Inglesa Nerd Font
     }
     s_fg, s_bg, s_lbl, s_icon = state_presets.get(state, (0, 248, state, "●"))
 
