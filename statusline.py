@@ -1,8 +1,28 @@
 import sys
 import json
 
+def shorten_model(name: str) -> str:
+    """Encurta o nome do modelo para uma etiqueta minimalista."""
+    if not name:
+        return "gemini"
+    low = name.lower()
+    if "3.8 flash" in low:
+        return "3.8-flash"
+    if "3.8 pro" in low:
+        return "3.8-pro"
+    if "1.5 flash" in low:
+        return "1.5-flash"
+    if "1.5 pro" in low:
+        return "1.5-pro"
+    if "flash" in low:
+        return "flash"
+    if "pro" in low:
+        return "pro"
+    parts = name.split()
+    return parts[0].lower() if parts else "gemini"
+
 def main():
-    # Garante saída UTF-8 no Windows para suportar Nerd Fonts e símbolos ANSI
+    # Garante saída UTF-8 no Windows
     try:
         sys.stdout.reconfigure(encoding="utf-8")
     except Exception:
@@ -14,24 +34,21 @@ def main():
     except Exception:
         data = {}
 
-    # 1. Estado do Agente (IDLE, BUSY, THINK, TOOL)
+    # 1. Estado do Agente (compacto em minúsculas)
     state = str(data.get("agent_state", "idle")).lower()
     state_presets = {
-        "idle": (0, 77, "IDLE", "●"),         # Verde
-        "working": (0, 214, "BUSY", "⚡"),     # Laranja/Amarelo
-        "thinking": (15, 99, "THINK", "🧠"),   # Violeta
-        "tool_use": (15, 33, "TOOL", "🔧"),   # Azul
+        "idle": (0, 77, "idle", "●"),         # Verde
+        "working": (0, 214, "busy", "⚡"),     # Laranja/Amarelo
+        "thinking": (15, 99, "think", "🧠"),   # Violeta
+        "tool_use": (15, 33, "tool", "🔧"),   # Azul
     }
-    s_fg, s_bg, s_lbl, s_icon = state_presets.get(state, (0, 248, state.upper(), "●"))
+    s_fg, s_bg, s_lbl, s_icon = state_presets.get(state, (0, 248, state, "●"))
 
-    # 2. Modelo LLM Ativo
+    # 2. Modelo LLM Ativo (enxuto)
     model_info = data.get("model", {})
-    model_name = model_info.get("display_name", "Gemini")
-    if len(model_name) > 22:
-        model_name = model_name[:19] + "..."
+    model_name = shorten_model(model_info.get("display_name", ""))
 
-    # 3. Cota da Conta (Account Quota / AI Credits)
-    # Analisa buckets de cota (ex: gemini-weekly, gemini-5h)
+    # 3. Cota da Conta (apenas porcentagem limpa)
     quota_info = data.get("quota", {})
     lowest_remaining = None
     if isinstance(quota_info, dict):
@@ -50,7 +67,7 @@ def main():
         else:
             q_bg, q_fg = 196, 15  # Vermelho
 
-    # 4. Janela de Contexto / Tokens da Conversa
+    # 4. Contexto da Conversa (apenas porcentagem inteira limpa)
     cw = data.get("context_window", {})
     used_pct = cw.get("used_percentage", 0.0)
 
@@ -66,13 +83,13 @@ def main():
     branch = vcs.get("branch", "")
     dirty = "*" if vcs.get("dirty") else ""
 
-    # Helper para montar cápsulas no estilo Starship Pills: TEXTO
+    # Helper para montar cápsulas Starship compactas: TEXTO
     def pill(fg, bg, content):
         return f"\033[38;5;{bg}m\ue0b6\033[38;5;{fg}m\033[48;5;{bg}m{content}\033[0m\033[38;5;{bg}m\ue0b4\033[0m"
 
-    # Fallback caso a fonte/terminal não possua suporte a Nerd Fonts
+    # Fallback seguro para fontes sem glifos
     def simple_pill(fg, bg, content):
-        return f"\033[38;5;{fg}m\033[48;5;{bg}m [{content}] \033[0m"
+        return f"\033[38;5;{fg}m\033[48;5;{bg}m[{content}]\033[0m"
 
     try:
         segments = [
@@ -80,9 +97,9 @@ def main():
             pill(15, 25, f"󰚩 {model_name}"),
         ]
         if lowest_remaining is not None:
-            segments.append(pill(q_fg, q_bg, f"󰆏 Cota: {rem_pct:.0f}%"))
+            segments.append(pill(q_fg, q_bg, f"󰆏 {rem_pct:.0f}%"))
 
-        segments.append(pill(c_fg, c_bg, f"󰘚 ctx: {used_pct:.1f}%"))
+        segments.append(pill(c_fg, c_bg, f"󰘚 {used_pct:.0f}%"))
 
         if branch:
             segments.append(pill(150, 237, f" {branch}{dirty}"))
@@ -96,12 +113,12 @@ def main():
             simple_pill(15, 25, model_name),
         ]
         if lowest_remaining is not None:
-            segments.append(simple_pill(q_fg, q_bg, f"Cota: {rem_pct:.0f}%"))
+            segments.append(simple_pill(q_fg, q_bg, f"{rem_pct:.0f}%"))
 
-        segments.append(simple_pill(c_fg, c_bg, f"ctx: {used_pct:.1f}%"))
+        segments.append(simple_pill(c_fg, c_bg, f"{used_pct:.0f}%"))
 
         if branch:
-            segments.append(simple_pill(150, 237, f"git:{branch}{dirty}"))
+            segments.append(simple_pill(150, 237, f"{branch}{dirty}"))
         print(" ".join(segments), end="")
 
 if __name__ == "__main__":
